@@ -215,11 +215,12 @@ static int rej_sample(uint16_t *r, size_t rlen, const unsigned char *buf,
     ENDFOR
     dst[MAX:256] := 0
     */
-   //goodNum=2,tmp0={1,...,1,1,...,1,1,...,1,3,1,...,1}
+    // goodNum=2,tmp0={1,...,1,1,...,1,1,...,1,3,1,...,1}
     tmp0 = _mm256_add_epi8(pi0, ones);
-    //Unpack and interleave 8-bit integers from the low half of each 128-bit lane in a and b, and store the results in dst
+    // Unpack and interleave 8-bit integers from the low half of each 128-bit
+    // lane in a and b, and store the results in dst
     pi0 = _mm256_unpacklo_epi8(pi0, tmp0);
-    //i do not know what is the significance of pi0, maybe mask
+    // i do not know what is the significance of pi0, maybe mask
     d0 = _mm256_shuffle_epi8(d0, pi0);
     //...
     _mm_storeu_si128((__m128i *)&r[ctr], _mm256_castsi256_si128(d0));
@@ -293,7 +294,7 @@ void gen_matrix(polyvec *a, const unsigned char *seed, int transposed) {
       sm3_kdf_squeezeblocks(buf, NBLOCKS + 1, &state);
 
       ctr = 0;
-      //coeffs[ctr:MAX] is not eligible
+      // coeffs[ctr:MAX] is not eligible
       t = rej_sample(a[i].vec[j].coeffs, AKCN_N, buf, 128 * NBLOCKS);
 
       while (t) {

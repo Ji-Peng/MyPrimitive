@@ -7,19 +7,14 @@
 
 /**
  * @description: cbd: center binomial distribution using AVX2
- * @param: poly *r is output, uint8_t *buf is input, which includes random bits
+ * @param: poly *r is output, uint8_t *buf is input, which includes random
+ * bits， and the length of buf is 32 * AKCN_N / 64 = 512.
  * @return:
  */
 void cbd(poly *r, const uint8_t *buf) {
   __m256i vec0, vec1, vec2, vec3, tmp;
-  /*
-  _mm256_set1_epi32(int a):
-  FOR j := 0 to 7
-      i := j*32
-      dst[i+31:i] := a[31:0]
-  ENDFOR
-  dst[MAX:256] := 0
-  */
+  // _m256_set1_epi32 : Broadcast 32-bit integer a to all elements of dst
+  // epi: extended packed integer, extended: SSE not MMX
   // 0x5 == 0101B, so mask55 == 0101 0101 ... 0101B
   const __m256i mask55 = _mm256_set1_epi32(0x55555555);
   // mask33 == 0011 0011 ... 0011B
@@ -29,31 +24,27 @@ void cbd(poly *r, const uint8_t *buf) {
 
   // one loop can generate 64 coefficients
   for (size_t i = 0; i < AKCN_N / 64; i++) {
-    /*
-    _mm256_loadu_si256(__m256i const *mem_addr):
-    dst[255:0] := MEM[mem_addr+255:mem_addr]
-    */
-    // so, vec0 includes 32bytes == 32*8=256bits coming from buf
+    /*-----------------------------------------------------------------------------*/
+    // _mm256_loadu_si256: Load 256-bits of integer data from memory into dst
+    // si256: signed 256-bit integer
+    // so, vec0 includes 32bytes == 32 * 8 == 256-bit coming from buf
     vec0 = _mm256_loadu_si256((__m256i *)&buf[32 * i]);
-    /*
-    _mm256_srli_epi32(__m256i a, int imm8):
-    FOR j := 0 to 7 i := j*32 IF imm8[7:0] > 31
-        dst[i+31:i] := 0
-      ELSE
-        dst[i+31:i] := ZeroExtend(a[i+31:i] >> imm8[7:0])
-      FI
-    ENDFOR
-    dst[MAX:256] := 0
-
-    Shift packed 32-bit integers in a right by imm8 while shifting in zeros,
-    and store the results in dst.
-    */
-    //shift every 32-bit in a right by 1
+    // _mm256_srli_epi32: Shift packed 32-bit integers in a right by imm8
+    // shift every 32-bit in a right by 1
     vec1 = _mm256_srli_epi32(vec0, 1);
+    // _mm256_and_si256: Compute the bitwise AND of 256 bits
     vec0 = _mm256_and_si256(mask55, vec0);
     vec1 = _mm256_and_si256(mask55, vec1);
+    // _mm256_add_epi32: Add packed 32-bit integers in a and b
     vec0 = _mm256_add_epi32(vec0, vec1);
+    // simulation：
+    // vec0 = a7 a6 a5 a4 a3 a2 a1 a0
+    // vec1 = 0  a7 a6 a5 a4 a3 a2 a1
+    // vec0 = 0  a6 0  a4 0  a2 0  a0
+    // vec1 = 0  a7 0  a5 0  a3 0  a1
+    // vec0 = 0  a6 0  a4 0  a2 0  a0 + 0  a7 0  a5 0  a3 0  a1
 
+    /*-----------------------------------------------------------------------------*/
     vec1 = _mm256_srli_epi32(vec0, 2);
     vec0 = _mm256_and_si256(mask33, vec0);
     vec1 = _mm256_and_si256(mask33, vec1);
