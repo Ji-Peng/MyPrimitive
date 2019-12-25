@@ -43,34 +43,60 @@ void cbd(poly *r, const uint8_t *buf) {
     // vec0 = 0  a6 0  a4 0  a2 0  a0
     // vec1 = 0  a7 0  a5 0  a3 0  a1
     // vec0 = 0  a6 0  a4 0  a2 0  a0 + 0  a7 0  a5 0  a3 0  a1
+    // assuming vec0 = b7 b6 b5 b4 b3 b2 b1 b0
 
     /*-----------------------------------------------------------------------------*/
+    //vec0 = b7 b6 b5 b4 b3 b2 b1 b0
+    //vec1 = 0  0  b7 b6 b5 b4 b3 b2
     vec1 = _mm256_srli_epi32(vec0, 2);
+    //vec0 = 0  0  b5 b4 0  0  b1 b0
     vec0 = _mm256_and_si256(mask33, vec0);
+    //vec1 = 0  0  b7 b6 0  0  b3 b2 
     vec1 = _mm256_and_si256(mask33, vec1);
 
+    //vec2 = 0  0  0  0  0  0  b1 b0
     vec2 = _mm256_srli_epi32(vec0, 4);
+    //vec3 = 0  0  0  0  0  0  b7 b6
     vec3 = _mm256_srli_epi32(vec1, 4);
+    //vec0 = 0  0  0  0  0  0  b1 b0
     vec0 = _mm256_and_si256(mask03, vec0);
+    //vec1 = 0  0  0  0  0  0  b3 b2
     vec1 = _mm256_and_si256(mask03, vec1);
+    //vec2 = 0  0  0  0  0  0  b1 b0 
     vec2 = _mm256_and_si256(mask03, vec2);
+    //vec3 = 0  0  0  0  0  0  b7 b6
     vec3 = _mm256_and_si256(mask03, vec3);
 
+    //vec1 = 0  0  0  0  0  0  b1 b0 - 0  0  0  0  0  0  b3 b2
+    //assuming vec1 = c7 c6 c5 c4 c3 c2 c1 c0
     vec1 = _mm256_sub_epi8(vec0, vec1);
+    //vec3 = 0  0  0  0  0  0  b1 b0 - 0  0  0  0  0  0  b7 b6
+    //assuming vec3 = d7 d6 d5 d4 d3 d2 d1 d0
     vec3 = _mm256_sub_epi8(vec2, vec3);
-
+    //_mm256_castsi256_si128: cast type _m256i to _m128i
+    //_mm256_cvtepi8_epi16: using zero-extend to convert 8-bit word to 16-bit
+    //vec0 = 0...0 0 0 0 0 0 0 b1 b0
     vec0 = _mm256_cvtepi8_epi16(_mm256_castsi256_si128(vec1));
+    //_mm256_extracti128_si256: if 1, extract vec1[255:128]
+    //vec1 = 0...0 0...0
     vec1 = _mm256_cvtepi8_epi16(_mm256_extracti128_si256(vec1, 1));
+    //vec2 = 0...0 d7 d6 d5 d4 d3 d2 d1 d0 
     vec2 = _mm256_cvtepi8_epi16(_mm256_castsi256_si128(vec3));
+    //vec3 = 0...0 0...0
     vec3 = _mm256_cvtepi8_epi16(_mm256_extracti128_si256(vec3, 1));
-
+    //tmp = 0...0 d7 d6 d5 d4 d3 d2 d1 d0 0...0 0 0 0 0 0 0 b1 b0
     tmp = _mm256_unpacklo_epi16(vec0, vec2);
+    //vec2 = 0...0 0..0
     vec2 = _mm256_unpackhi_epi16(vec0, vec2);
+    //vec0 = 0...0 d7 d6 d5 d4 d3 d2 d1 d0 0...0 0 0 0 0 0 0 b1 b0
     vec0 = tmp;
+    //tmp = 0...0 0...0 0...0 0...0
     tmp = _mm256_unpacklo_epi16(vec1, vec3);
+    //vec3 =  0...0 0...0 0...0 0...0
     vec3 = _mm256_unpackhi_epi16(vec1, vec3);
+    //vec1 = 0...0  0...0 0...0 0...0 
     vec1 = tmp;
-
+    
     tmp = _mm256_permute2x128_si256(vec0, vec2, 0x20);
     vec2 = _mm256_permute2x128_si256(vec0, vec2, 0x31);
     vec0 = tmp;
